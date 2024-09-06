@@ -15,14 +15,15 @@ export enum EventType {
 }
 
 export type OnMessage = (states: States, uid: string) => void;
-export type OnOpen = (open: (states?: States) => void) => void;
+export type OnOpen = () => void;
 export type OnClose = () => void;
+
+export type Init = (OnOpen: OnOpen, onClose: OnClose) => void;
+export type Open = (states?: States) => void;
 export type Patch = (channelKey: string, state: unknown) => void;
 
 export interface Server {
-  init: (
-    onMessage: OnMessage,
-    OnOpen: OnOpen,
-    onClose: OnClose,
-  ) => Patch;
+  init: Init;
+  open: Open;
+  patch: Patch;
 }

@@ -1,7 +1,7 @@
-import { EventType, States } from "../types";
+import { EventType, OnClose, OnOpen, States } from "../types";
 
 import { getSyncServer } from "./helper.ts";
-import { deviceId, groupId } from "./store.ts";
+import { deviceId, groupId, onMessages } from "./store.ts";
 
 interface SendState {
   states: States;
@@ -12,34 +12,36 @@ interface SendState {
 let webSocket: WebSocket;
 const url = getSyncServer();
 
-export function init(
-  onMessage: (states: States, uid: string) => void,
-  onOpen: (open: (states?: States) => void) => void,
-  onClose: () => void,
-): (channelKey: string, state: unknown) => void {
+export function init(onOpen: OnOpen, onClose: OnClose) {
   if (!webSocket) {
     webSocket = new WebSocket(url);
     webSocket.addEventListener("close", onClose);
-    webSocket.addEventListener("open", () =>
-      onOpen((states?: States) => {
-        webSocket.send(
-          JSON.stringify({
-            id: groupId.value,
-            states,
-            type: "connect",
-            uid: deviceId.value,
-          }),
-        );
+    webSocket.addEventListener("open", onOpen);
+    const messageListener = (event: MessageEvent) => {
+      const { states, uid } = JSON.parse(event.data) as SendState;
+      onMessages.value.forEach(onMessage => onMessage(states, uid));
+    }
+    webSocket.addEventListener("message", messageListener);
+  } else {
+    onOpen();
+  }
+}
+
+export function open(states?: States) {
+  if (webSocket) {
+    webSocket.send(
+      JSON.stringify({
+        id: groupId.value,
+        states,
+        type: "connect",
+        uid: deviceId.value,
       }),
     );
   }
+}
 
-  webSocket.addEventListener("message", (event: MessageEvent) => {
-    const { states, uid } = JSON.parse(event.data) as SendState;
-    onMessage(states, uid);
-  });
-
-  return function patch(channelKey: string, state: unknown) {
+export function patch(channelKey: string, state: unknown) {
+  if (webSocket) {
     webSocket.send(
       JSON.stringify({
         id: groupId.value,
@@ -48,5 +50,5 @@ export function init(
         uid: deviceId.value,
       }),
     );
-  };
-}
+  }
+};
