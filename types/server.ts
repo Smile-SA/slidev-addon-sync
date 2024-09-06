@@ -14,11 +14,15 @@ export enum EventType {
   RESET = "reset",
 }
 
-export type Connect = () => void;
-export type Patch = (id: string, states: States) => void;
-export type Replace = (id: string, states: States) => void;
-export type Reset = (id: string) => void;
+export type OnMessage = (states: States, uid: string) => void;
+export type OnOpen = (open: (states?: States) => void) => void;
+export type OnClose = () => void;
+export type Patch = (channelKey: string, state: unknown) => void;
 
 export interface Server {
-  connect: Connect;
+  init: (
+    onMessage: OnMessage,
+    OnOpen: OnOpen,
+    onClose: OnClose,
+  ) => Patch;
 }
