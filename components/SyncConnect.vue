@@ -22,7 +22,7 @@ const title = computed(() => {
 const hasConnectionError = computed(
   () =>
     connectState.value === Status.DISCONNECTED ||
-    connectState.value === Status.ERROR
+    connectState.value === Status.ERROR,
 );
 
 watch(isOpen, () => {
@@ -38,10 +38,11 @@ function submit() {
 
 onMounted(() => {
   if (
-    configs.syncSettings?.autoConnect === true ||
-    (autoConnect.value &&
-      new Date().getTime() - new Date(autoConnect.value).getTime() <
-        configs.syncSettings?.autoConnect * 1000)
+    configs.syncSettings?.autoConnect &&
+    (configs.syncSettings?.autoConnect === true ||
+      (autoConnect.value &&
+        new Date().getTime() - new Date(autoConnect.value).getTime() <
+          configs.syncSettings?.autoConnect * 1000))
   ) {
     connect();
   }

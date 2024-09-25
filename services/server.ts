@@ -12,6 +12,7 @@ import {
   groupId,
   isPresenter,
   onMessages,
+  stateChannels,
 } from "./store.ts";
 
 let server: Server;
@@ -26,13 +27,13 @@ const importPromise = (async () => {
   }
 })();
 const loadPromise = new Promise<void>((resolve) => {
-  if (document.readyState === 'complete') {
-    resolve()
+  if (document.readyState === "complete") {
+    resolve();
   } else {
-    window.addEventListener('load', () => resolve());
+    window.addEventListener("load", () => resolve());
   }
-})
-const promises = Promise.all([importPromise, loadPromise])
+});
+const promises = Promise.all([importPromise, loadPromise]);
 
 addSyncMethod({
   init(
@@ -40,12 +41,17 @@ addSyncMethod({
     onUpdate: (data: Partial<State>) => void,
     state: State,
   ) {
+    const channel = getChannel(channelKey);
+    if (!channel) {
+      return;
+    }
+
     states[channelKey] = state;
-    const filteredState = { ...getFilteredState(channelKey, state) };
+    const filteredState = { ...getFilteredState(channel, state) };
     const stateCopy = ref<Partial<State>>(filteredState);
     onMessages.value.push((states: States, uid: string) => {
       if (states && channelKey in states) {
-        const filteredState = getFilteredState(channelKey, state);
+        const filteredState = getFilteredState(channel, state);
         const stateDiff = diff(
           filteredState,
           states[channelKey],
@@ -63,8 +69,8 @@ addSyncMethod({
     });
 
     return (state: State) => {
-      if (isPresenter.value) {
-        const filteredState = getFilteredState(channelKey, state);
+      if (canUpdate(channelKey)) {
+        const filteredState = getFilteredState(channel, state);
         const stateDiff = diff(filteredState, stateCopy.value as object);
         stateCopy.value = { ...filteredState } as UnwrapRef<Partial<State>>;
         if (
@@ -86,16 +92,35 @@ addSyncMethod({
   },
 });
 
-function getFilteredState(channelKey: string, state: State): Partial<State> {
-  const filteredKeys = channelKey.endsWith("- shared")
-    ? ["page", "clicks", "cursor", "lastUpdate"]
-    : undefined;
-  if (!filteredKeys) {
+function getChannel(channelKey: string): string[] | true | undefined {
+  const channels: Record<string, string[] | true> =
+    stateChannels instanceof Array
+      ? Object.fromEntries(stateChannels.map((channel) => [channel, true]))
+      : stateChannels;
+  const channel = Object.entries(channels).find(([key]) =>
+    channelKey.endsWith(key),
+  );
+  return channel?.[1];
+}
+
+function getFilteredState(
+  channel: string[] | true,
+  state: State,
+): Partial<State> {
+  if (channel === true) {
     return toRaw(state);
   }
   return Object.fromEntries(
-    Object.entries(toRaw(state)).filter(([key]) => filteredKeys.includes(key)),
+    Object.entries(toRaw(state)).filter(([key]) => channel.includes(key)),
   ) as Partial<State>;
+}
+
+function canUpdate(channelKey: string) {
+  return (
+    isPresenter.value ||
+    configs.syncNoPresenter === true ||
+    configs.syncNoPresenter?.some((key) => channelKey.endsWith(key))
+  );
 }
 
 function onClose() {

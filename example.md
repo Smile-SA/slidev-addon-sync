@@ -1,5 +1,8 @@
 ---
 theme: default
+syncSettings:
+  server: ws://localhost:8080
+  autoConnect: true
 ---
 
 # Page 1
