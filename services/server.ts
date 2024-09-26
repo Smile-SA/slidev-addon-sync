@@ -4,7 +4,14 @@ import { addSyncMethod, configs } from "@slidev/client";
 import { diff } from "deep-object-diff";
 import { ref, toRaw } from "vue";
 
-import { Server, State, States, Status } from "../types";
+import {
+  Server,
+  State,
+  StateConfig,
+  States,
+  Status,
+  SyncState,
+} from "../types";
 import {
   autoConnect,
   connectState,
@@ -35,6 +42,10 @@ const loadPromise = new Promise<void>((resolve) => {
 });
 const promises = Promise.all([importPromise, loadPromise]);
 
+function copy(state: Partial<State>): Partial<State> {
+  return JSON.parse(JSON.stringify(state));
+}
+
 addSyncMethod({
   init(
     channelKey: string,
@@ -46,9 +57,12 @@ addSyncMethod({
       return;
     }
 
-    states[channelKey] = state;
-    const filteredState = { ...getFilteredState(channel, state) };
-    const stateCopy = ref<Partial<State>>(filteredState);
+    if (channel.init) {
+      states[channelKey] = state;
+    }
+    const stateCopy = ref<Partial<State>>(
+      copy(getFilteredState(channel, state)),
+    );
     onMessages.value.push((states: States, uid: string) => {
       if (states && channelKey in states) {
         const filteredState = getFilteredState(channel, state);
@@ -59,20 +73,20 @@ addSyncMethod({
         if (Object.keys(stateDiff).length > 0 && uid !== deviceId.value) {
           onUpdate(
             Object.fromEntries(
-              Object.entries(stateDiff).filter(
-                ([, value]) => value !== undefined,
-              ),
+              Object.entries(stateDiff)
+                .filter(([, value]) => value !== undefined)
+                .map(([key]) => [key, states[channelKey][key]]),
             ) as Partial<State>,
           );
         }
       }
     });
 
-    return (state: State) => {
-      if (canUpdate(channelKey)) {
+    return (state: State, updating = false) => {
+      if (canUpdate(channel) && !updating) {
         const filteredState = getFilteredState(channel, state);
-        const stateDiff = diff(filteredState, stateCopy.value as object);
-        stateCopy.value = { ...filteredState } as UnwrapRef<Partial<State>>;
+        const stateDiff = diff(stateCopy.value as object, filteredState);
+        stateCopy.value = copy(filteredState) as UnwrapRef<Partial<State>>;
         if (
           Object.keys(stateDiff).length > 0 &&
           connectState.value === Status.CONNECTED
@@ -92,35 +106,36 @@ addSyncMethod({
   },
 });
 
-function getChannel(channelKey: string): string[] | true | undefined {
-  const channels: Record<string, string[] | true> =
+function getChannel(channelKey: string): StateConfig | undefined {
+  const channels: Record<string, SyncState> =
     stateChannels instanceof Array
       ? Object.fromEntries(stateChannels.map((channel) => [channel, true]))
       : stateChannels;
-  const channel = Object.entries(channels).find(([key]) =>
+  let channel = Object.entries(channels).find(([key]) =>
     channelKey.endsWith(key),
-  );
-  return channel?.[1];
+  )?.[1];
+  if (!(channel instanceof Object) || channel instanceof Array) {
+    return {
+      keys: channel ?? true,
+      presenter: true,
+      init: true,
+    };
+  }
+  return { keys: true, presenter: true, init: true, ...channel };
 }
 
-function getFilteredState(
-  channel: string[] | true,
-  state: State,
-): Partial<State> {
-  if (channel === true) {
+function getFilteredState(channel: StateConfig, state: State): Partial<State> {
+  const { keys } = channel;
+  if (keys === true) {
     return toRaw(state);
   }
   return Object.fromEntries(
-    Object.entries(toRaw(state)).filter(([key]) => channel.includes(key)),
+    Object.entries(toRaw(state)).filter(([key]) => keys.includes(key)),
   ) as Partial<State>;
 }
 
-function canUpdate(channelKey: string) {
-  return (
-    isPresenter.value ||
-    configs.syncNoPresenter === true ||
-    configs.syncNoPresenter?.some((key) => channelKey.endsWith(key))
-  );
+function canUpdate(channel: StateConfig) {
+  return isPresenter.value || !channel.presenter;
 }
 
 function onClose() {

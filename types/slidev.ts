@@ -1,3 +1,11 @@
+export interface StateConfig {
+  keys: string[] | true
+  presenter: boolean
+  init: boolean
+}
+
+export type SyncState = string[] | true | Partial<StateConfig>
+
 declare module "@slidev/types" {
   export interface SlidevConfig {
     syncSettings?: {
@@ -5,7 +13,6 @@ declare module "@slidev/types" {
       enabled?: boolean | 'dev' | 'build'
       server?: string;
     };
-    syncStates?: string[] | Record<string, string[] | true>
-    syncNoPresenter?: string[] | true
+    syncStates?: string[] | Record<string, SyncState>
   }
 }

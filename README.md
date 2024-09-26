@@ -159,6 +159,20 @@ syncStates:
 ---
 ```
 
+**Note:** don't forget in that case to list all channels you want to synchronize
+
+You can also use the alternative object syntax:
+
+```yaml
+---
+syncStates:
+  shared:
+    keys: ["page", "clicks", "lastUpdate"]
+  drawings:
+    keys: true
+---
+```
+
 ### Presenter
 
 By default this addon will only send state updates to the server if you are in presenter view.
@@ -167,22 +181,28 @@ This is probably want you want if you only want to synchronize slidev states.
 
 But other addons like [`slidev-component-poll`](https://github.com/Smile-SA/slidev-component-poll) also rely on `createSyncState` to synchronize states, but in this example you want everybody to be able to use the poll, so in other words, to send state updates.
 
-In that case you case the `syncNoPresenter` settings to specify the channels for which you want everyone to be able to send updates:
+In that case you case the `presenter` settings to specify the channels for which you want everyone to be able to send updates:
 
 ```yaml
 ---
-syncNoPresenter:
-  - poll
-# Or alternatively:
-syncNoPresenter: ["poll"]
+syncStates:
+  poll:
+    presenter: false
 ---
 ```
 
-You can also use `true` to disable the usage of the presenter for all channels:
+### State initialization
+
+When you connect, this addon will, by default send the current state to the server.
+
+This is probably what you want when your are presenting to other peoples, it will in that case send the drawings you have already made the current navigation...etc.
+
+If you don't want this behavior, you can use the `init` settings:
 
 ```yaml
 ---
-syncNoPresenter: true # not recommended to be used without `syncStates`
-syncStates: ["poll"]
+syncStates:
+  poll:
+    init: false
 ---
 ```
