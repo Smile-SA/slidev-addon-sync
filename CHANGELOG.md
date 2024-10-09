@@ -1,3 +1,14 @@
+### 0.1.0 (2024-10-09)
+
+##### Chores
+
+*  update slidev dependencies ([72d27aa4](https://github.com/Smile-SA/slidev-addon-sync/commit/72d27aa47409813dd59657ab2ff12063c8ba9dcd))
+
+##### New Features
+
+*  add init flag, refactor presenter flag, fix infinite update loop ([f00b6bd0](https://github.com/Smile-SA/slidev-addon-sync/commit/f00b6bd0e00865ea520008474ccf12ae367d6d06))
+*  add configurations ([2bd90d81](https://github.com/Smile-SA/slidev-addon-sync/commit/2bd90d81ff5c287aea9257b04296b051c8267f55))
+
 #### 0.0.1 (2024-09-06)
 
 ##### Chores
